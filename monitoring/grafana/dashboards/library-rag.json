@@ -1,0 +1,19 @@
+{
+  "title": "LibraryRAG",
+  "panels": [
+    {
+      "title": "Query Latency",
+      "type": "graph",
+      "targets": [
+        {"expr": "rate(rag_retrieval_latency_seconds_sum[5m]) / rate(rag_retrieval_latency_seconds_count[5m])", "legendFormat": "retrieval"},
+        {"expr": "rate(rag_generation_latency_seconds_sum[5m]) / rate(rag_generation_latency_seconds_count[5m])", "legendFormat": "generation"}
+      ]
+    },
+    {
+      "title": "Chunks Indexed",
+      "type": "stat",
+      "targets": [{"expr": "rag_chunks_indexed_total"}]
+    }
+  ],
+  "schemaVersion": 38
+}

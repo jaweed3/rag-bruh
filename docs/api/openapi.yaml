@@ -1,0 +1,175 @@
+openapi: 3.1.0
+info:
+  title: LibraryRAG API
+  description: Real-Time AI Librarian — RAG pipeline for campus library
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness check
+      operationId: health_health_get
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "ok" }
+  /ready:
+    get:
+      tags: [health]
+      summary: Readiness check
+      operationId: ready_ready_get
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "ready" }
+  /query:
+    post:
+      tags: [query]
+      summary: Ask a question
+      operationId: query_query_post
+      parameters:
+        - name: X-API-Key
+          in: header
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+      responses:
+        "200":
+          description: Answer with citations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResponse"
+  /ingest:
+    post:
+      tags: [ingest]
+      summary: Ingest a document
+      operationId: ingest_ingest_post
+      parameters:
+        - name: X-API-Key
+          in: header
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestRequest"
+      responses:
+        "200":
+          description: Ingested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+  /documents:
+    get:
+      tags: [documents]
+      summary: List indexed documents
+      operationId: list_documents_documents_get
+      parameters:
+        - name: X-API-Key
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Document list
+  /documents/{doc_id}:
+    delete:
+      tags: [documents]
+      summary: Delete a document and its chunks
+      operationId: delete_document_documents__doc_id__delete
+      parameters:
+        - name: doc_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: X-API-Key
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted
+  /feedback:
+    post:
+      tags: [feedback]
+      summary: Rate a query response
+      operationId: feedback_feedback_post
+      parameters:
+        - name: X-API-Key
+          in: header
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackRequest"
+      responses:
+        "200":
+          description: Received
+components:
+  schemas:
+    QueryRequest:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string, example: "buku python apa aja yang ada?" }
+    QueryResponse:
+      type: object
+      required: [query_id, answer, citations]
+      properties:
+        query_id: { type: string, format: uuid }
+        answer: { type: string }
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Citation"
+    Citation:
+      type: object
+      required: [title, chunk_id, score]
+      properties:
+        title: { type: string }
+        chunk_id: { type: string }
+        score: { type: number }
+    IngestRequest:
+      type: object
+      required: [title, text]
+      properties:
+        title: { type: string, example: "Python Programming" }
+        author: { type: string, default: "" }
+        source: { type: string, default: "api" }
+        text: { type: string }
+    IngestResponse:
+      type: object
+      required: [doc_id, chunks, message]
+      properties:
+        doc_id: { type: string, format: uuid }
+        chunks: { type: integer }
+        message: { type: string }
+    FeedbackRequest:
+      type: object
+      required: [query_id, rating]
+      properties:
+        query_id: { type: string, format: uuid }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        corrected_response: { type: string, default: "" }
