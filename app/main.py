@@ -1,10 +1,11 @@
 import asyncio
 import os
+import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -13,6 +14,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.components.database import Database
 from app.components.embedder import Embedder
 from app.components.generator import Generator
+from app.components.metrics import http_requests_total
 from app.components.retriever import Retriever
 from app.config.configuration import ConfigurationManager
 from app.dependencies import limiter
@@ -100,9 +102,47 @@ if _cors:
         allow_headers=["X-API-Key", "Content-Type"],
     )
 
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    rid = request.headers.get("X-Request-ID", str(uuid.uuid4())[:8])
+    request.state.request_id = rid
+    try:
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = rid
+        http_requests_total.labels(
+            method=request.method,
+            path=request.url.path,
+            status=response.status_code,
+        ).inc()
+        return response
+    except Exception as e:
+        http_requests_total.labels(
+            method=request.method,
+            path=request.url.path,
+            status=500,
+        ).inc()
+        log.error("unhandled_error rid=%s %s: %s", rid, request.url.path, e)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error", "request_id": rid},
+        )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    rid = getattr(request.state, "request_id", "none")
+    log.error("global_exception rid=%s %s: %s", rid, request.url.path, exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "request_id": rid},
+    )
+
+
 @app.get("/metrics")
 async def metrics() -> Response:
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
 
 app.include_router(health.router)
 app.include_router(query.router)

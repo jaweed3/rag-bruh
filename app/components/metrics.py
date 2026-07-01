@@ -18,3 +18,6 @@ generation_latency = Histogram(
 query_total = Counter("rag_queries_total", "Total number of queries", ["status"])
 chunks_indexed = Gauge("rag_chunks_indexed_total", "Total chunks in vector store")
 indexed_documents = Gauge("rag_documents_indexed_total", "Total documents indexed")
+http_requests_total = Counter(
+    "rag_http_requests_total", "Total HTTP requests", ["method", "path", "status"]
+)

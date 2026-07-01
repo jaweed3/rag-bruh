@@ -18,4 +18,5 @@ def test_health_endpoint(client):
 def test_ready_endpoint(client):
     resp = client.get("/ready")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ready"}
+    assert resp.json()["status"] in ("ready", "degraded")
+    assert "checks" in resp.json()

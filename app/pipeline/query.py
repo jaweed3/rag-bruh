@@ -31,44 +31,53 @@ class QueryPipeline:
 
     async def run(self, query: str) -> dict:
         query_id = str(uuid.uuid4())
-        t0 = time.perf_counter()
-        vec = self.embedder.embed_one(query)
-        retrieval_latency.observe(time.perf_counter() - t0)
+        try:
+            t0 = time.perf_counter()
+            vec = self.embedder.embed_one(query)
+            retrieval_latency.observe(time.perf_counter() - t0)
 
-        t1 = time.perf_counter()
-        results = self.retriever.search(
-            vec.tolist(),
-            top_k=self.inf_cfg.top_k,
-            min_score=self.inf_cfg.min_score,
-        )
-        retrieval_latency.observe(time.perf_counter() - t1)
+            t1 = time.perf_counter()
+            results = self.retriever.search(
+                vec.tolist(),
+                top_k=self.inf_cfg.top_k,
+                min_score=self.inf_cfg.min_score,
+            )
+            retrieval_latency.observe(time.perf_counter() - t1)
 
-        if not results:
-            query_total.labels(status="no_results").inc()
-            await self.database.save_query(query_id, query, [], "")
+            if not results:
+                query_total.labels(status="no_results").inc()
+                await self.database.save_query(query_id, query, [], "")
+                return {
+                    "query_id": query_id,
+                    "answer": "I don't have that information.",
+                    "citations": [],
+                }
+
+            t2 = time.perf_counter()
+            answer = self.generator.generate(query, results)
+            generation_latency.observe(time.perf_counter() - t2)
+
+            citations = [
+                {"title": r["title"], "chunk_id": r["chunk_id"], "score": round(r["score"], 3)}
+                for r in results
+            ]
+
+            retrieved_ids = [c["chunk_id"] for c in citations]
+            await self.database.save_query(query_id, query, retrieved_ids, answer)
+
+            query_total.labels(status="success").inc()
+            log.info("query_complete: %d results", len(results))
+
             return {
                 "query_id": query_id,
-                "answer": "I don't have that information.",
+                "answer": answer,
+                "citations": citations,
+            }
+        except Exception as e:
+            log.error("query_pipeline_error %s: %s", query_id, e)
+            query_total.labels(status="error").inc()
+            return {
+                "query_id": query_id,
+                "answer": "An error occurred while processing your query.",
                 "citations": [],
             }
-
-        t2 = time.perf_counter()
-        answer = self.generator.generate(query, results)
-        generation_latency.observe(time.perf_counter() - t2)
-
-        citations = [
-            {"title": r["title"], "chunk_id": r["chunk_id"], "score": round(r["score"], 3)}
-            for r in results
-        ]
-
-        retrieved_ids = [c["chunk_id"] for c in citations]
-        await self.database.save_query(query_id, query, retrieved_ids, answer)
-
-        query_total.labels(status="success").inc()
-        log.info("query_complete: %d results", len(results))
-
-        return {
-            "query_id": query_id,
-            "answer": answer,
-            "citations": citations,
-        }

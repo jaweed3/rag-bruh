@@ -10,6 +10,8 @@ router = APIRouter(tags=["query"], dependencies=[Depends(require_api_key)])
 async def query(request: QueryRequest, req: Request) -> QueryResponse:
     pipeline = getattr(req.app.state, "query", None)
     if pipeline is None:
-        raise HTTPException(503, "Query service not available (GROQ_API_KEY missing)")
-    result = await pipeline.run(request.query)
+        raise HTTPException(503, "Query service not available (no LLM API key configured)")
+    if not request.query.strip():
+        raise HTTPException(422, "query must not be empty")
+    result = await pipeline.run(request.query.strip())
     return QueryResponse(**result)
