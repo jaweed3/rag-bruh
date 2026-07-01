@@ -8,7 +8,7 @@ from core.config import QdrantConfig
 
 class Retriever:
     def __init__(self, cfg: QdrantConfig) -> None:
-        self.client = QdrantClient(host=cfg.host, port=cfg.port)
+        self.client = QdrantClient(host=cfg.host, port=cfg.port, check_compatibility=False)
         self.collection = cfg.collection
         self._ensure_collection(cfg)
 
@@ -24,12 +24,12 @@ class Retriever:
         self.client.upsert(collection_name=self.collection, points=points)
 
     def search(self, vector: list[float], top_k: int = 5, min_score: float = 0.0) -> list:
-        results = self.client.search(
+        results = self.client.query_points(
             collection_name=self.collection,
-            query_vector=vector,
+            query=vector,
             limit=top_k,
-            score_threshold=min_score,
-        )
+            score_threshold=min_score or None,
+        ).points
         return [
             {
                 "chunk_id": r.id,
