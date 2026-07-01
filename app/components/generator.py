@@ -16,7 +16,7 @@ class Generator:
     def __init__(self, nvidia: NvidiaConfig | None = None, groq: GroqConfig | None = None) -> None:
         if nvidia and nvidia.api_key:
             self.api_key = nvidia.api_key
-            self.base_url = nvidia.base_url
+            self._chat_url = f"{nvidia.base_url}/chat/completions"
             self.model = nvidia.model
             self.max_tokens = nvidia.max_tokens
             self.temperature = nvidia.temperature
