@@ -9,6 +9,7 @@ from core.config import (
     EmbedderConfig,
     GroqConfig,
     InferenceConfig,
+    NvidiaConfig,
     PostgreSQLConfig,
     QdrantConfig,
     RedpandaConfig,
@@ -21,6 +22,7 @@ class ConfigurationManager:
     def __init__(self, config_path: Path = CONFIG_FILE_PATH) -> None:
         raw = self._load(config_path)
         self._cfg = ServeConfig(**raw)
+        self._cfg.nvidia = self._nvidia_with_env_overlay(self._cfg.nvidia)
         self._cfg.groq = self._groq_with_env_overlay(self._cfg.groq)
         self._cfg.postgres = self._pg_with_env_overlay(self._cfg.postgres)
         self._cfg.qdrant = self._qdrant_with_env_overlay(self._cfg.qdrant)
@@ -31,6 +33,16 @@ class ConfigurationManager:
         if not path.exists():
             raise FileNotFoundError(f"Serve config not found: {path}")
         return yaml.safe_load(path.read_text())
+
+    @staticmethod
+    def _nvidia_with_env_overlay(cfg: NvidiaConfig) -> NvidiaConfig:
+        return NvidiaConfig(
+            api_key=os.environ.get("NVIDIA_API_KEY", cfg.api_key),
+            model=os.environ.get("NVIDIA_MODEL", cfg.model),
+            base_url=os.environ.get("NVIDIA_BASE_URL", cfg.base_url),
+            max_tokens=int(os.environ.get("NVIDIA_MAX_TOKENS", cfg.max_tokens)),
+            temperature=float(os.environ.get("NVIDIA_TEMPERATURE", cfg.temperature)),
+        )
 
     @staticmethod
     def _groq_with_env_overlay(cfg: GroqConfig) -> GroqConfig:
@@ -70,6 +82,9 @@ class ConfigurationManager:
 
     def get_redpanda_config(self) -> RedpandaConfig:
         return self._cfg.redpanda
+
+    def get_nvidia_config(self) -> NvidiaConfig:
+        return self._cfg.nvidia
 
     def get_groq_config(self) -> GroqConfig:
         return self._cfg.groq

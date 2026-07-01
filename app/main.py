@@ -31,7 +31,11 @@ async def lifespan(app: FastAPI):
 
     embedder = Embedder(cm.get_embedder_config().model_name)
     retriever = Retriever(cm.get_qdrant_config())
-    generation = Generator(cm.get_groq_config()) if cm.get_groq_config().api_key else None
+
+    nv_cfg = cm.get_nvidia_config()
+    groq_cfg = cm.get_groq_config()
+    has_key = nv_cfg.api_key or groq_cfg.api_key
+    generation = Generator(nvidia=nv_cfg, groq=groq_cfg) if has_key else None
     database = Database(cm.get_postgres_config())
     await database.connect()
 
@@ -64,8 +68,10 @@ async def lifespan(app: FastAPI):
 
     consumer_task = asyncio.create_task(ing_pipeline.run_consumer())
 
-    if not generation:
-        log.warning("GROQ_API_KEY not set — query endpoint disabled")
+    if generation:
+        log.info("llm_ready: %s", generation.model)
+    else:
+        log.warning("no LLM API key set — query endpoint disabled")
 
     log.info("server_ready")
     yield

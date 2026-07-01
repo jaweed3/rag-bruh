@@ -50,6 +50,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY}
       GROQ_API_KEY: ${GROQ_API_KEY}
       API_KEY: ${API_KEY:-}
       QDRANT_HOST: qdrant

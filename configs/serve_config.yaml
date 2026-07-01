@@ -12,6 +12,13 @@ redpanda:
   brokers: localhost:19092
   topic: library-ingestion
 
+nvidia:
+  api_key: ""
+  model: meta/llama-3.2-3b-instruct
+  base_url: "https://integrate.api.nvidia.com/v1"
+  max_tokens: 1024
+  temperature: 0.3
+
 groq:
   api_key: ""
   model: llama3-70b-8192

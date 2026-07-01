@@ -18,6 +18,14 @@ class RedpandaConfig(BaseModel):
     topic: str = "library-ingestion"
 
 
+class NvidiaConfig(BaseModel):
+    api_key: str = ""
+    model: str = "meta/llama-3.2-3b-instruct"
+    base_url: str = "https://integrate.api.nvidia.com/v1"
+    max_tokens: int = 1024
+    temperature: float = 0.3
+
+
 class GroqConfig(BaseModel):
     api_key: str = ""
     model: str = "llama3-70b-8192"
@@ -49,6 +57,7 @@ class ServeConfig(BaseModel):
     postgres: PostgreSQLConfig = PostgreSQLConfig()
     qdrant: QdrantConfig = QdrantConfig()
     redpanda: RedpandaConfig = RedpandaConfig()
+    nvidia: NvidiaConfig = NvidiaConfig()
     groq: GroqConfig = GroqConfig()
     embedder: EmbedderConfig = EmbedderConfig()
     chunker: ChunkerConfig = ChunkerConfig()
